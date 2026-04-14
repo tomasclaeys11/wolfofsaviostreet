@@ -8,18 +8,33 @@ import random
 from datetime import datetime, timedelta
 
 # --- 1. CONFIGURATION & STYLING ---
+
 st.set_page_config(page_title="Wolf Brokerage Platform", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: white; }
+    
+    /* Make text areas and input labels highly readable */
+    label, p, .stMarkdown { color: #ffffff !important; font-weight: 500; }
+    
+    /* Force text inside the backup boxes to be bright white */
+    textarea { 
+        color: #ffffff !important; 
+        background-color: #1a1c24 !important; 
+        font-family: monospace !important; 
+        font-size: 14px !important;
+        -webkit-text-fill-color: #ffffff !important; /* Fix for some mobile browsers */
+    }
+    
+    /* Improve button visibility */
+    .stButton > button { border: 1px solid #444; }
+    
     [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] { font-size: 1.2rem; font-weight: bold; }
-    div[data-testid="stRadio"] > div { flex-direction: row; } 
     </style>
     """, unsafe_allow_html=True)
-
 # --- 2. DATA ARCHITECTURE ---
 MARKET_FILE = "market_history.csv"
 PORTFOLIO_FILE = "portfolios.json"

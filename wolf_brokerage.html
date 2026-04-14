@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wolf Brokerage">
+<meta name="theme-color" content="#0a0f1c">
+<title>Wolf Brokerage</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0f1c;
+    --bg2: #111827;
+    --bg3: #1a2332;
+    --border: #2a3548;
+    --gold: #d4a843;
+    --green: #22c55e;
+    --red: #ef4444;
+    --text: #e8eaf0;
+    --muted: #6b7a99;
+    --accent: #3b82f6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .header-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 2px;
+    color: var(--gold);
+  }
+
+  .header-date {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+
+  .tab {
+    flex: 1;
+    min-width: 70px;
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+  .tab-icon { font-size: 16px; display: block; margin-bottom: 2px; }
+
+  /* CONTENT */
+  .content { padding: 16px; max-width: 900px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* METRIC CARDS */
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+  .metric-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .metric-value { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; }
+  .metric-change { font-size: 12px; margin-top: 2px; }
+  .up { color: var(--green); }
+  .down { color: var(--red); }
+  .gold { color: var(--gold); }
+
+  /* ASSET TABLE */
+  .section-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin: 16px 0 10px; }
+
+  .asset-table { width: 100%; border-collapse: collapse; }
+  .asset-table th { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); }
+  .asset-table td { padding: 8px 8px; font-size: 13px; border-bottom: 1px solid rgba(42,53,72,0.5); }
+  .asset-table tr:last-child td { border-bottom: none; }
+  .asset-name { font-weight: 500; }
+  .asset-sector { font-size: 10px; color: var(--muted); }
+  .price-mono { font-family: 'DM Mono', monospace; }
+
+  /* CHART */
+  .chart-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .chart-title { font-size: 13px; font-weight: 600; }
+  .chart-filters { display: flex; gap: 4px; }
+  .cf-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 4px 8px; border-radius: 6px; cursor: pointer; }
+  .cf-btn.active { background: var(--gold); color: #000; border-color: var(--gold); font-weight: 600; }
+  canvas { width: 100% !important; max-height: 160px; }
+
+  /* FORMS */
+  .form-group { margin-bottom: 12px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  select, input[type="number"], input[type="text"], input[type="password"] {
+    width: 100%; background: var(--bg2); border: 1px solid var(--border);
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px;
+    padding: 10px 12px; border-radius: 8px; outline: none; appearance: none;
+  }
+  select:focus, input:focus { border-color: var(--gold); }
+
+  .btn {
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1.5px;
+    cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn:active { opacity: 0.8; transform: scale(0.99); }
+  .btn-primary { background: var(--gold); color: #000; }
+  .btn-danger { background: var(--red); color: #fff; }
+  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+
+  .info-bar { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 13px; margin: 10px 0; }
+
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* PORTFOLIO */
+  .portfolio-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+  .portfolio-name { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); letter-spacing: 2px; margin-bottom: 10px; }
+  .portfolio-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+  .pm-box { background: var(--bg3); border-radius: 8px; padding: 10px; }
+  .pm-label { font-size: 10px; color: var(--muted); text-transform: uppercase; }
+  .pm-value { font-family: 'DM Mono', monospace; font-size: 15px; font-weight: 500; margin-top: 2px; }
+
+  /* TOAST */
+  .toast {
+    position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+    background: var(--bg2); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 20px; border-radius: 20px; font-size: 13px; font-weight: 500;
+    z-index: 999; display: none; white-space: nowrap;
+  }
+  .toast.show { display: block; animation: fadeInOut 2.5s forwards; }
+  .toast.success { border-color: var(--green); color: var(--green); }
+  .toast.error { border-color: var(--red); color: var(--red); }
+  @keyframes fadeInOut { 0%{opacity:0;transform:translateX(-50%) translateY(10px)} 15%{opacity:1;transform:translateX(-50%) translateY(0)} 75%{opacity:1} 100%{opacity:0} }
+
+  /* SHOCK QUEUE */
+  .shock-list { margin-top: 8px; }
+  .shock-item { display: flex; justify-content: space-between; align-items: center; background: var(--bg3); border-radius: 6px; padding: 8px 10px; margin-bottom: 4px; font-size: 13px; }
+  .shock-remove { background: none; border: none; color: var(--red); font-size: 16px; cursor: pointer; padding: 0 4px; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .row3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
+
+  .badge { display: inline-block; font-size: 9px; padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+  .badge-tech { background: #1e3a5f; color: #60a5fa; }
+  .badge-energy { background: #3d2106; color: #fb923c; }
+  .badge-defense { background: #1f2937; color: #9ca3af; }
+  .badge-health { background: #0f2d1f; color: #4ade80; }
+  .badge-consumer { background: #2d1f3d; color: #c084fc; }
+  .badge-industry { background: #2d2006; color: #fbbf24; }
+  .badge-crypto { background: #3d2c06; color: #f59e0b; }
+  .badge-etf { background: #1a2d3d; color: #67e8f9; }
+
+  .etf-section { margin-top: 6px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">🐺 WOLF BROKERAGE</div>
+    <div class="header-date" id="current-date">Loading...</div>
+  </div>
+  <div style="text-align:right">
+    <div style="font-size:11px;color:var(--muted)">Market</div>
+    <div id="header-world" style="font-family:'DM Mono',monospace;font-size:14px;color:var(--gold)">—</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('market')"><span class="tab-icon">🌍</span>Market</button>
+  <button class="tab" onclick="switchTab('trade')"><span class="tab-icon">💹</span>Trade</button>
+  <button class="tab" onclick="switchTab('portfolio')"><span class="tab-icon">💼</span>Portfolio</button>
+  <button class="tab" onclick="switchTab('admin')"><span class="tab-icon">⚙️</span>Admin</button>
+</div>
+
+<div class="content">
+
+  <!-- MARKET TAB -->
+  <div id="panel-market" class="panel active">
+    <div class="metrics" id="market-metrics"></div>
+    <div class="chart-wrap">
+      <div class="chart-header">
+        <div class="chart-title">Index History</div>
+        <div class="chart-filters">
+          <button class="cf-btn" onclick="setChartRange(7,this)">7D</button>
+          <button class="cf-btn active" onclick="setChartRange(30,this)">30D</button>
+          <button class="cf-btn" onclick="setChartRange(90,this)">90D</button>
+          <button class="cf-btn" onclick="setChartRange(9999,this)">MAX</button>
+        </div>
+      </div>
+      <canvas id="market-chart"></canvas>
+    </div>
+    <div class="section-title">Stocks</div>
+    <table class="asset-table">
+      <thead><tr><th>Asset</th><th>Price</th><th>Day %</th></tr></thead>
+      <tbody id="stock-rows"></tbody>
+    </table>
+    <div class="section-title etf-section">ETFs</div>
+    <table class="asset-table">
+      <thead><tr><th>ETF</th><th>Price</th><th>Day %</th></tr></thead>
+      <tbody id="etf-rows"></tbody>
+    </table>
+  </div>
+
+  <!-- TRADE TAB -->
+  <div id="panel-trade" class="panel">
+    <div class="form-group">
+      <label>Team</label>
+      <select id="trade-team" onchange="updateTradeInfo()">
+        <option>Team Alpha</option>
+        <option>Team Wolf</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Asset</label>
+      <select id="trade-asset" onchange="updateTradeInfo()"></select>
+    </div>
+    <div class="chart-wrap" style="margin-bottom:12px">
+      <canvas id="trade-chart" style="max-height:140px"></canvas>
+    </div>
+    <div class="info-bar" id="trade-info">Loading...</div>
+    <div class="row2" style="margin-bottom:12px">
+      <div>
+        <label>Action</label>
+        <select id="trade-action" onchange="updateTradeInfo()">
+          <option value="buy">BUY</option>
+          <option value="sell">SELL</option>
+        </select>
+      </div>
+      <div>
+        <label>Shares</label>
+        <input type="number" id="trade-qty" value="1" min="1" oninput="updateTradeInfo()">
+      </div>
+    </div>
+    <div class="info-bar" id="trade-cost">Order value: —</div>
+    <div style="margin-top:10px">
+      <button class="btn btn-primary" onclick="executeTrade()">EXECUTE TRADE</button>
+    </div>
+  </div>
+
+  <!-- PORTFOLIO TAB -->
+  <div id="panel-portfolio" class="panel">
+    <div id="portfolio-cards"></div>
+  </div>
+
+  <!-- ADMIN TAB -->
+  <div id="panel-admin" class="panel">
+    <button class="btn btn-primary" onclick="advanceDay()" style="margin-bottom:16px">
+      📅 ADVANCE TO NEXT DAY
+    </button>
+
+    <div class="divider"></div>
+    <div class="section-title">⚡ Queue Shocks</div>
+    <div class="row3" style="margin-bottom:8px">
+      <div>
+        <label>Target</label>
+        <select id="shock-target"></select>
+      </div>
+      <div>
+        <label>Shock %</label>
+        <input type="number" id="shock-pct" value="0" step="0.5">
+      </div>
+      <div style="padding-top:20px">
+        <button class="btn btn-secondary" onclick="addShock()" style="font-size:13px;padding:10px">Add</button>
+      </div>
+    </div>
+    <div id="shock-list" class="shock-list"></div>
+
+    <div class="divider"></div>
+    <div class="section-title">🌱 Fast Simulate</div>
+    <div class="row2" style="margin-bottom:8px;align-items:end">
+      <div>
+        <label>Days</label>
+        <input type="number" id="sim-days" value="30" min="1">
+      </div>
+      <button class="btn btn-secondary" onclick="runSim()" style="font-size:14px;padding:12px">Run Sim</button>
+    </div>
+
+    <div class="divider"></div>
+    <div class="section-title">⚠️ Hard Reset</div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="reset-pw" placeholder="Enter password">
+    </div>
+    <button class="btn btn-danger" onclick="hardReset()">RESET ALL DATA</button>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+// ============================================================
+// DATA & CONSTANTS
+// ============================================================
+const TEAMS = ["Team Alpha", "Team Wolf"];
+const STARTING_CASH = 100000;
+const START_DATE = "2020-01-01";
+const RESET_PW = "fullresetstocks";
+
+const BASE_STOCKS = {
+  "Nvidia":{"sector":"Tech","region":"USA"},
+  "ASML":{"sector":"Tech","region":"EU"},
+  "Samsung":{"sector":"Tech","region":"WORLD"},
+  "ExxonMobil":{"sector":"Energy","region":"USA"},
+  "TotalEnergies":{"sector":"Energy","region":"EU"},
+  "CNOOC":{"sector":"Energy","region":"WORLD"},
+  "Siemens":{"sector":"Industry","region":"EU"},
+  "Caterpillar":{"sector":"Industry","region":"USA"},
+  "Toyota":{"sector":"Industry","region":"WORLD"},
+  "Rheinmetall":{"sector":"Defense","region":"EU"},
+  "Lockheed_Martin":{"sector":"Defense","region":"USA"},
+  "Elbit_Systems":{"sector":"Defense","region":"WORLD"},
+  "Novartis":{"sector":"Health","region":"EU"},
+  "United_Health":{"sector":"Health","region":"USA"},
+  "AstraZeneca":{"sector":"Health","region":"EU"},
+  "Lotus_Bakeries":{"sector":"Consumer","region":"EU"},
+  "Nike":{"sector":"Consumer","region":"USA"},
+  "AB_Inbev":{"sector":"Consumer","region":"EU"}
+};
+const SECTORS = ["Tech","Energy","Industry","Defense","Health","Consumer"];
+const REGIONS = ["USA","EU","WORLD"];
+const ETF_LIST = SECTORS.map(s=>`ETF_${s}`).concat(REGIONS.map(r=>`ETF_${r}`));
+const ALL_ASSETS = Object.keys(BASE_STOCKS).concat(["Bitcoin"]).concat(ETF_LIST);
+
+let pendingShocks = [];
+let chartRange = 30;
+let marketChart = null;
+let tradeChart = null;
+
+// ============================================================
+// STORAGE
+// ============================================================
+function saveData(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+function loadData(key) { try { const d = localStorage.getItem(key); return d ? JSON.parse(d) : null; } catch(e) { return null; } }
+
+function initStorage() {
+  if (!loadData('market_history')) {
+    const row = { Date: START_DATE, Bitcoin: 50000 };
+    Object.keys(BASE_STOCKS).forEach(s => row[s] = 100);
+    const withEtf = calcEtfsRow(row);
+    saveData('market_history', [withEtf]);
+  }
+  if (!loadData('portfolios')) {
+    const ports = {};
+    TEAMS.forEach(t => {
+      const h = {}, dv = {};
+      ALL_ASSETS.forEach(a => { h[a] = 0; dv[a] = 0; });
+      ports[t] = { Cash: STARTING_CASH, Holdings: h, DailyVolume: dv };
+    });
+    saveData('portfolios', ports);
+  }
+}
+
+function getHistory() { return loadData('market_history') || []; }
+function getPortfolios() { return loadData('portfolios') || {}; }
+
+// ============================================================
+// MARKET ENGINE
+// ============================================================
+function getConstituents(asset) {
+  if (asset.startsWith("ETF_")) {
+    const cat = asset.replace("ETF_","");
+    if (SECTORS.includes(cat)) return Object.keys(BASE_STOCKS).filter(s=>BASE_STOCKS[s].sector===cat);
+    if (cat==="WORLD") return Object.keys(BASE_STOCKS);
+    return Object.keys(BASE_STOCKS).filter(s=>BASE_STOCKS[s].region===cat);
+  }
+  return [asset];
+}
+
+function calcEtfsRow(row) {
+  const r = {...row};
+  SECTORS.forEach(s => {
+    const stocks = Object.keys(BASE_STOCKS).filter(k=>BASE_STOCKS[k].sector===s);
+    r[`ETF_${s}`] = stocks.reduce((a,k)=>a+r[k],0)/stocks.length;
+  });
+  REGIONS.forEach(rg => {
+    const stocks = rg==="WORLD" ? Object.keys(BASE_STOCKS) : Object.keys(BASE_STOCKS).filter(k=>BASE_STOCKS[k].region===rg);
+    r[`ETF_${rg}`] = stocks.reduce((a,k)=>a+r[k],0)/stocks.length;
+  });
+  return r;
+}
+
+function addDays(dateStr, n) {
+  const d = new Date(dateStr);
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function advanceMarket(days=1, shocks={}) {
+  const history = getHistory();
+  const ports = getPortfolios();
+
+  // Build effective shocks (expand ETF/sector/region to constituents)
+  const effectiveShocks = {};
+  Object.entries(shocks).forEach(([target, pct]) => {
+    getConstituents(target).forEach(c => {
+      effectiveShocks[c] = (effectiveShocks[c]||0) + pct/100;
+    });
+  });
+
+  for (let d=0; d<days; d++) {
+    const last = history[history.length-1];
+    const newDate = addDays(last.Date, 1);
+    const newRow = { Date: newDate };
+
+    // Collect daily volume from all teams
+    const totalVol = {};
+    Object.keys(BASE_STOCKS).concat(["Bitcoin"]).forEach(a => totalVol[a]=0);
+    TEAMS.forEach(t => {
+      Object.entries(ports[t].DailyVolume).forEach(([a,v]) => {
+        if (v!==0) getConstituents(a).forEach(c => { if(totalVol[c]!==undefined) totalVol[c]+=v; });
+      });
+      ALL_ASSETS.forEach(a => ports[t].DailyVolume[a] = 0);
+    });
+
+    Object.keys(BASE_STOCKS).forEach(asset => {
+      const old = last[asset];
+      const rand = (Math.random()-0.5)*0.07;
+      const vol = totalVol[asset];
+      const volImpact = (vol/(Math.abs(vol)+100))*0.12;
+      const shock = 1 + (effectiveShocks[asset]||0);
+      newRow[asset] = Math.max(1, old*(1+rand+volImpact)*shock);
+    });
+
+    // Bitcoin
+    const btcOld = last.Bitcoin;
+    let btcRand = (Math.random()-0.5)*0.24;
+    if (btcOld > 150000) btcRand -= 0.03;
+    if (btcOld < 25000) btcRand += 0.03;
+    const btcVol = (totalVol.Bitcoin/(Math.abs(totalVol.Bitcoin)+50))*0.40;
+    const btcShock = 1 + (effectiveShocks.Bitcoin||0);
+    newRow.Bitcoin = Math.max(100, btcOld*(1+btcRand+btcVol)*btcShock);
+
+    history.push(calcEtfsRow(newRow));
+  }
+
+  saveData('market_history', history);
+  saveData('portfolios', ports);
+}
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+function toast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(()=>{ t.className='toast'; }, 2800);
+}
+
+function fmt(n) { return '$'+Number(n).toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function fmtPct(n) { return (n>=0?'+':'')+n.toFixed(2)+'%'; }
+function pctClass(n) { return n>=0?'up':'down'; }
+
+function sectorBadge(sector) {
+  const cls = { Tech:'badge-tech', Energy:'badge-energy', Defense:'badge-defense', Health:'badge-health', Consumer:'badge-consumer', Industry:'badge-industry' };
+  return `<span class="badge ${cls[sector]||''}">${sector}</span>`;
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    const tabs=['market','trade','portfolio','admin'];
+    t.classList.toggle('active', tabs[i]===name);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  if (name==='market') renderMarket();
+  if (name==='trade') renderTrade();
+  if (name==='portfolio') renderPortfolio();
+}
+
+// ============================================================
+// MARKET TAB
+// ============================================================
+function renderMarket() {
+  const history = getHistory();
+  if (!history.length) return;
+  const cur = history[history.length-1];
+  const prev = history.length>1 ? history[history.length-2] : cur;
+  const week = history.length>=7 ? history[history.length-7] : history[0];
+
+  document.getElementById('current-date').textContent = cur.Date;
+  document.getElementById('header-world').textContent = fmt(cur['ETF_WORLD']);
+
+  // Find top/bottom stock
+  const stockChanges = Object.keys(BASE_STOCKS).map(s=>{
+    const pct = prev[s]!==0 ? ((cur[s]-prev[s])/prev[s])*100 : 0;
+    return {name:s, pct};
+  }).sort((a,b)=>b.pct-a.pct);
+  const top = stockChanges[0], bot = stockChanges[stockChanges.length-1];
+
+  const btcPct = prev.Bitcoin!==0 ? ((cur.Bitcoin-prev.Bitcoin)/prev.Bitcoin)*100 : 0;
+  const worldPct = prev['ETF_WORLD']!==0 ? ((cur['ETF_WORLD']-prev['ETF_WORLD'])/prev['ETF_WORLD'])*100 : 0;
+
+  document.getElementById('market-metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Bitcoin</div><div class="metric-value gold">${fmt(cur.Bitcoin)}</div><div class="metric-change ${pctClass(btcPct)}">${fmtPct(btcPct)}</div></div>
+    <div class="metric"><div class="metric-label">World Index</div><div class="metric-value">${fmt(cur['ETF_WORLD'])}</div><div class="metric-change ${pctClass(worldPct)}">${fmtPct(worldPct)}</div></div>
+    <div class="metric"><div class="metric-label">🔥 Top Gainer</div><div class="metric-value" style="font-size:14px">${top.name}</div><div class="metric-change up">${fmtPct(top.pct)}</div></div>
+    <div class="metric"><div class="metric-label">🩸 Biggest Drop</div><div class="metric-value" style="font-size:14px">${bot.name}</div><div class="metric-change down">${fmtPct(bot.pct)}</div></div>
+  `;
+
+  // Stock rows
+  const stockHtml = Object.keys(BASE_STOCKS).map(s=>{
+    const pct = prev[s]!==0?((cur[s]-prev[s])/prev[s])*100:0;
+    return `<tr>
+      <td><div class="asset-name">${s.replace(/_/g,' ')}</div>${sectorBadge(BASE_STOCKS[s].sector)}</td>
+      <td class="price-mono">${fmt(cur[s])}</td>
+      <td class="${pctClass(pct)}">${fmtPct(pct)}</td>
+    </tr>`;
+  }).join('');
+  // Bitcoin row
+  document.getElementById('stock-rows').innerHTML = stockHtml + `<tr>
+    <td><div class="asset-name">Bitcoin</div><span class="badge badge-crypto">Crypto</span></td>
+    <td class="price-mono">${fmt(cur.Bitcoin)}</td>
+    <td class="${pctClass(btcPct)}">${fmtPct(btcPct)}</td>
+  </tr>`;
+
+  const etfHtml = ETF_LIST.map(e=>{
+    const pct = prev[e]!==0?((cur[e]-prev[e])/prev[e])*100:0;
+    return `<tr>
+      <td><div class="asset-name">${e.replace('ETF_','')}</div><span class="badge badge-etf">ETF</span></td>
+      <td class="price-mono">${fmt(cur[e])}</td>
+      <td class="${pctClass(pct)}">${fmtPct(pct)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('etf-rows').innerHTML = etfHtml;
+
+  renderMarketChart(history);
+}
+
+function setChartRange(n, btn) {
+  chartRange = n;
+  document.querySelectorAll('.chart-filters .cf-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMarketChart(getHistory());
+}
+
+function renderMarketChart(history) {
+  const sliced = chartRange >= history.length ? history : history.slice(-chartRange);
+  const labels = sliced.map(r=>r.Date);
+  const colors = ['#3b82f6','#22c55e','#d4a843'];
+  const datasets = REGIONS.map((r,i)=>({
+    label:`ETF_${r}`, data:sliced.map(row=>row[`ETF_${r}`]),
+    borderColor:colors[i], backgroundColor:'transparent', borderWidth:2, pointRadius:0, tension:0.3
+  }));
+
+  if (marketChart) marketChart.destroy();
+  const ctx = document.getElementById('market-chart').getContext('2d');
+  marketChart = new Chart(ctx, {
+    type:'line', data:{labels,datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#6b7a99',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#6b7a99',maxTicksLimit:6,font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// TRADE TAB
+// ============================================================
+function renderTrade() {
+  const assetSel = document.getElementById('trade-asset');
+  if (!assetSel.options.length) {
+    ALL_ASSETS.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a.replace(/_/g,' ');
+      assetSel.appendChild(o);
+    });
+  }
+  const shockSel = document.getElementById('shock-target');
+  if (!shockSel.options.length) {
+    ALL_ASSETS.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a.replace(/_/g,' ');
+      shockSel.appendChild(o);
+    });
+  }
+  updateTradeInfo();
+}
+
+function updateTradeInfo() {
+  const history = getHistory();
+  if (!history.length) return;
+  const cur = history[history.length-1];
+  const team = document.getElementById('trade-team').value;
+  const asset = document.getElementById('trade-asset').value;
+  const qty = parseInt(document.getElementById('trade-qty').value)||0;
+  const ports = getPortfolios();
+  const price = cur[asset];
+  const cash = ports[team].Cash;
+  const shares = ports[team].Holdings[asset]||0;
+
+  document.getElementById('trade-info').textContent =
+    `Price: ${fmt(price)} | Cash: ${fmt(cash)} | Owned: ${shares}`;
+  document.getElementById('trade-cost').textContent =
+    `Order value: ${fmt(qty * price)}`;
+
+  renderTradeChart(history, asset);
+}
+
+function renderTradeChart(history, asset) {
+  const sliced = history.slice(-60);
+  const labels = sliced.map(r=>r.Date);
+  const data = sliced.map(r=>r[asset]);
+
+  if (tradeChart) tradeChart.destroy();
+  const ctx = document.getElementById('trade-chart').getContext('2d');
+  tradeChart = new Chart(ctx, {
+    type:'line', data:{
+      labels,
+      datasets:[{data, borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.08)', borderWidth:2, pointRadius:0, fill:true, tension:0.3}]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#6b7a99',maxTicksLimit:5,font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}},
+        y:{ticks:{color:'#6b7a99',font:{size:10}},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+}
+
+function executeTrade() {
+  const history = getHistory();
+  if (!history.length) return;
+  const cur = history[history.length-1];
+  const team = document.getElementById('trade-team').value;
+  const asset = document.getElementById('trade-asset').value;
+  const qty = parseInt(document.getElementById('trade-qty').value)||0;
+  const action = document.getElementById('trade-action').value;
+  const ports = getPortfolios();
+  const price = cur[asset];
+  const cost = qty * price;
+
+  if (action==='buy') {
+    if (ports[team].Cash < cost) { toast('Insufficient funds!','error'); return; }
+    ports[team].Cash -= cost;
+    ports[team].Holdings[asset] = (ports[team].Holdings[asset]||0) + qty;
+    ports[team].DailyVolume[asset] = (ports[team].DailyVolume[asset]||0) + qty;
+  } else {
+    if ((ports[team].Holdings[asset]||0) < qty) { toast('Not enough shares!','error'); return; }
+    ports[team].Cash += cost;
+    ports[team].Holdings[asset] -= qty;
+    ports[team].DailyVolume[asset] = (ports[team].DailyVolume[asset]||0) - qty;
+  }
+
+  saveData('portfolios', ports);
+  toast(`✅ ${action.toUpperCase()} ${qty}× ${asset.replace(/_/g,' ')} @ ${fmt(price)}`,'success');
+  updateTradeInfo();
+}
+
+// ============================================================
+// PORTFOLIO TAB
+// ============================================================
+function renderPortfolio() {
+  const history = getHistory();
+  const ports = getPortfolios();
+  if (!history.length) return;
+  const cur = history[history.length-1];
+  const prev = history.length>1?history[history.length-2]:cur;
+  const week = history.length>=7?history[history.length-7]:history[0];
+
+  let html = '';
+  TEAMS.forEach(team => {
+    const p = ports[team];
+    const cash = p.Cash;
+    let hValNow=0, hValWeek=0;
+    let holdingRows = '';
+
+    Object.entries(p.Holdings).forEach(([a,q])=>{
+      if (q>0) {
+        const pNow = cur[a]||0;
+        const pPrev = prev[a]||0;
+        const pWeek = week[a]||0;
+        hValNow += q*pNow;
+        hValWeek += q*pWeek;
+        const dayPct = pPrev!==0?((pNow-pPrev)/pPrev)*100:0;
+        holdingRows += `<tr>
+          <td><div class="asset-name" style="font-size:12px">${a.replace(/_/g,' ')}</div></td>
+          <td class="price-mono" style="font-size:12px">${q}</td>
+          <td class="price-mono" style="font-size:12px">${fmt(q*pNow)}</td>
+          <td class="${pctClass(dayPct)}" style="font-size:12px">${fmtPct(dayPct)}</td>
+        </tr>`;
+      }
+    });
+
+    const netNow = cash+hValNow;
+    const netWeek = cash+hValWeek;
+    const weekDiff = netNow-netWeek;
+    const weekPct = netWeek!==0?(weekDiff/netWeek)*100:0;
+
+    html += `<div class="portfolio-card">
+      <div class="portfolio-name">${team}</div>
+      <div class="portfolio-metrics">
+        <div class="pm-box"><div class="pm-label">Net Worth</div><div class="pm-value">${fmt(netNow)}</div></div>
+        <div class="pm-box"><div class="pm-label">7-Day</div><div class="pm-value ${pctClass(weekPct)}">${fmtPct(weekPct)}</div></div>
+        <div class="pm-box"><div class="pm-label">Cash</div><div class="pm-value">${fmt(cash)}</div></div>
+        <div class="pm-box"><div class="pm-label">Holdings</div><div class="pm-value">${fmt(hValNow)}</div></div>
+      </div>
+      ${holdingRows ? `<table class="asset-table" style="margin-top:8px">
+        <thead><tr><th>Asset</th><th>#</th><th>Value</th><th>Day%</th></tr></thead>
+        <tbody>${holdingRows}</tbody>
+      </table>` : '<div style="color:var(--muted);font-size:13px;text-align:center;padding:10px">Portfolio empty</div>'}
+    </div>`;
+  });
+
+  document.getElementById('portfolio-cards').innerHTML = html;
+}
+
+// ============================================================
+// ADMIN TAB
+// ============================================================
+function advanceDay() {
+  const shocksMap = {};
+  pendingShocks.forEach(s=>{ shocksMap[s.target]=s.pct; });
+  advanceMarket(1, shocksMap);
+  pendingShocks = [];
+  renderShockList();
+  toast('📅 Day advanced!','success');
+  renderMarket();
+}
+
+function addShock() {
+  const target = document.getElementById('shock-target').value;
+  const pct = parseFloat(document.getElementById('shock-pct').value)||0;
+  pendingShocks.push({target, pct});
+  renderShockList();
+}
+
+function removeShock(i) {
+  pendingShocks.splice(i,1);
+  renderShockList();
+}
+
+function renderShockList() {
+  const el = document.getElementById('shock-list');
+  if (!pendingShocks.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px">No shocks queued</div>'; return; }
+  el.innerHTML = pendingShocks.map((s,i)=>`
+    <div class="shock-item">
+      <span><strong>${s.target.replace(/_/g,' ')}</strong> <span class="${s.pct>=0?'up':'down'}">${s.pct>0?'+':''}${s.pct}%</span></span>
+      <button class="shock-remove" onclick="removeShock(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function runSim() {
+  const days = parseInt(document.getElementById('sim-days').value)||30;
+  advanceMarket(days, {});
+  toast(`✅ Simulated ${days} days`,'success');
+  renderMarket();
+}
+
+function hardReset() {
+  const pw = document.getElementById('reset-pw').value;
+  if (pw !== RESET_PW) { toast('Wrong password!','error'); return; }
+  localStorage.removeItem('market_history');
+  localStorage.removeItem('portfolios');
+  document.getElementById('reset-pw').value = '';
+  initStorage();
+  toast('🔄 Game reset!','success');
+  renderMarket();
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initStorage();
+renderMarket();
+renderShockList();
+
+// Populate shock target dropdown on load
+window.addEventListener('load', ()=>{
+  const shockSel = document.getElementById('shock-target');
+  if (!shockSel.options.length) {
+    ALL_ASSETS.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a.replace(/_/g,' ');
+      shockSel.appendChild(o);
+    });
+  }
+  const assetSel = document.getElementById('trade-asset');
+  if (!assetSel.options.length) {
+    ALL_ASSETS.forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a.replace(/_/g,' ');
+      assetSel.appendChild(o);
+    });
+  }
+});
+</script>
+</body>
+</html>

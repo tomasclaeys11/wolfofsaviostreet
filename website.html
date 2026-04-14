@@ -242,7 +242,6 @@
 <div class="tabs">
   <button class="tab active" onclick="switchTab('market')"><span class="tab-icon">🌍</span>Market</button>
   <button class="tab" onclick="switchTab('trade')"><span class="tab-icon">💹</span>Trade</button>
-  <button class="tab" onclick="switchTab('shop')"><span class="tab-icon">🛒</span>Shop</button>
   <button class="tab" onclick="switchTab('portfolio')"><span class="tab-icon">💼</span>Portfolio</button>
   <button class="tab" onclick="switchTab('admin')"><span class="tab-icon">⚙️</span>Admin</button>
 </div>
@@ -312,49 +311,6 @@
     <div style="margin-top:10px">
       <button class="btn btn-primary" onclick="executeTrade()">EXECUTE TRADE</button>
     </div>
-  </div>
-
-  <div id="panel-shop" class="panel">
-    <div class="form-group">
-      <label>Team Account</label>
-      <select id="shop-team" onchange="updateShopInfo()">
-        <option>Team Alpha</option>
-        <option>Team Wolf</option>
-      </select>
-    </div>
-    <div class="info-bar" id="shop-balance" style="font-size:15px; color:var(--gold);">Current Balance: —</div>
-    
-    <div class="divider"></div>
-    <div class="section-title">🛒 Spend Cash (Buy Upgrades)</div>
-    <div class="row2" style="margin-bottom:12px">
-      <div>
-        <label>Item / Upgrade</label>
-        <input type="text" id="shop-item-name" placeholder="e.g. Extra Tent">
-      </div>
-      <div>
-        <label>Cost ($)</label>
-        <input type="number" id="shop-spend-amount" value="0" min="0">
-      </div>
-    </div>
-    <div style="margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-      <input type="checkbox" id="shop-refundable" style="width:16px; height:16px; accent-color:var(--gold);">
-      <label for="shop-refundable" style="margin:0; text-transform:none; font-size:12px; color:var(--text);">Item is Refundable (Can be sold back later)</label>
-    </div>
-    <button class="btn btn-danger" onclick="shopTransaction('spend')">PAY FOR ITEM</button>
-
-    <div class="divider"></div>
-    <div class="section-title">🏆 Reward Cash (Game Winnings)</div>
-    <div class="row2" style="margin-bottom:12px">
-      <div>
-        <label>Reason for Reward</label>
-        <input type="text" id="shop-reward-name" placeholder="e.g. Won Tug-of-War">
-      </div>
-      <div>
-        <label>Reward Amount ($)</label>
-        <input type="number" id="shop-reward-amount" value="0" min="0">
-      </div>
-    </div>
-    <button class="btn btn-primary" onclick="shopTransaction('reward')">ADD CASH TO TEAM</button>
   </div>
 
   <div id="panel-portfolio" class="panel">
@@ -465,8 +421,7 @@ function initStorage() {
     TEAMS.forEach(t => {
       const h = {}, dv = {};
       ALL_ASSETS.forEach(a => { h[a] = 0; dv[a] = 0; });
-      // Added "Inventory: []" to hold items
-      ports[t] = { Cash: STARTING_CASH, Holdings: h, DailyVolume: dv, Inventory: [] };
+      ports[t] = { Cash: STARTING_CASH, Holdings: h, DailyVolume: dv };
     });
     saveData('portfolios', ports);
   }
@@ -501,6 +456,7 @@ function calcEtfsRow(row) {
   return r;
 }
 
+// FIX: Strict UTC Date Math to avoid Daylight Saving Time bugs
 function addDays(dateStr, n) {
   const parts = dateStr.split('-');
   const d = new Date(Date.UTC(parts[0], parts[1]-1, parts[2]));
@@ -577,24 +533,27 @@ function sectorBadge(sector) {
 }
 
 function switchTab(name) {
+  // Hide/Show panels
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
 
+  // Update tab button colors
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['market', 'trade', 'shop', 'portfolio', 'admin'];
+    const tabs = ['market', 'trade', 'portfolio', 'admin'];
     t.classList.toggle('active', tabs[i] === name);
   });
 
+  // CONTROL THE TICKER VISIBILITY
   const ticker = document.querySelector('.ticker-wrap');
   if (name === 'market') {
     ticker.style.display = 'block';
-    renderMarket(); 
+    renderMarket(); // Ensure data is fresh
   } else {
     ticker.style.display = 'none';
   }
 
+  // Refresh other tabs if needed
   if (name === 'trade') renderTrade();
-  if (name === 'shop') updateShopInfo();
   if (name === 'portfolio') renderPortfolio();
 }
 
@@ -611,7 +570,9 @@ function renderMarket() {
   document.getElementById('current-date').textContent = cur.Date;
   document.getElementById('header-world').textContent = fmt(cur['ETF_WORLD']);
 
+  // --- POPULATE TICKER RIBBON ---
   let tickerHtml = '';
+  // Repeat the list 3 times to make the infinite scroll smooth
   for(let i=0; i<3; i++) {
     ALL_ASSETS.forEach(a => {
       const pct = prev[a] !== 0 ? ((cur[a] - prev[a]) / prev[a]) * 100 : 0;
@@ -621,6 +582,7 @@ function renderMarket() {
     });
   }
   document.getElementById('ticker-content').innerHTML = tickerHtml;
+  // ------------------------------
 
   const stockChanges = Object.keys(BASE_STOCKS).map(s=>{
     const pct = prev[s]!==0 ? ((cur[s]-prev[s])/prev[s])*100 : 0;
@@ -684,7 +646,7 @@ function renderMarketChart(history) {
   if (marketChart) marketChart.destroy();
   const ctx = document.getElementById('market-chart').getContext('2d');
   
-  if (typeof Chart === 'undefined') return; 
+  if (typeof Chart === 'undefined') return; // Fallback if no internet
 
   marketChart = new Chart(ctx, {
     type:'line', data:{labels,datasets},
@@ -804,86 +766,6 @@ function executeTrade() {
 }
 
 // ============================================================
-// SHOP TAB
-// ============================================================
-function updateShopInfo() {
-  const team = document.getElementById('shop-team').value;
-  const ports = getPortfolios();
-  if(ports[team]) {
-    document.getElementById('shop-balance').textContent = `Current Balance: ${fmt(ports[team].Cash)}`;
-  }
-}
-
-function shopTransaction(type) {
-  const team = document.getElementById('shop-team').value;
-  let ports = getPortfolios();
-  
-  // Backward compatibility check for older save files
-  if (!ports[team].Inventory) ports[team].Inventory = [];
-  
-  if (type === 'spend') {
-    const item = document.getElementById('shop-item-name').value || 'Item';
-    const cost = parseFloat(document.getElementById('shop-spend-amount').value) || 0;
-    const isRefundable = document.getElementById('shop-refundable').checked;
-    
-    if (cost <= 0) { toast('Enter a valid amount', 'error'); return; }
-    if (ports[team].Cash < cost) { toast('Not enough cash!', 'error'); return; }
-    
-    // Deduct cash and add item to inventory array
-    ports[team].Cash -= cost;
-    ports[team].Inventory.push({ 
-        id: Date.now(), // Give it a unique ID
-        name: item, 
-        cost: cost, 
-        refundable: isRefundable 
-    });
-    
-    toast(`✅ Paid ${fmt(cost)} for ${item}`, 'success');
-    
-    // Reset fields
-    document.getElementById('shop-item-name').value = '';
-    document.getElementById('shop-spend-amount').value = '0';
-    document.getElementById('shop-refundable').checked = false;
-  } 
-  else if (type === 'reward') {
-    const reason = document.getElementById('shop-reward-name').value || 'Reward';
-    const amount = parseFloat(document.getElementById('shop-reward-amount').value) || 0;
-    
-    if (amount <= 0) { toast('Enter a valid amount', 'error'); return; }
-    
-    ports[team].Cash += amount;
-    toast(`✅ Added ${fmt(amount)} for ${reason}`, 'success');
-    
-    // Reset fields
-    document.getElementById('shop-reward-name').value = '';
-    document.getElementById('shop-reward-amount').value = '0';
-  }
-  
-  saveData('portfolios', ports);
-  updateShopInfo();
-}
-
-// Logic for selling an inventory item back to the shop
-function sellInventoryItem(team, itemId) {
-  let ports = getPortfolios();
-  if(!ports[team].Inventory) return;
-  
-  let itemIndex = ports[team].Inventory.findIndex(i => i.id === itemId);
-  if(itemIndex > -1) {
-    let item = ports[team].Inventory[itemIndex];
-    if(item.refundable) {
-      if(confirm(`Sell ${item.name} back to the shop for ${fmt(item.cost)}?`)) {
-        ports[team].Cash += item.cost;
-        ports[team].Inventory.splice(itemIndex, 1);
-        saveData('portfolios', ports);
-        toast(`✅ Sold ${item.name}`, 'success');
-        renderPortfolio(); // Refresh the list
-      }
-    }
-  }
-}
-
-// ============================================================
 // PORTFOLIO TAB
 // ============================================================
 function renderPortfolio() {
@@ -923,21 +805,6 @@ function renderPortfolio() {
     const weekDiff = netNow-netWeek;
     const weekPct = netWeek!==0?(weekDiff/netWeek)*100:0;
 
-    // Build Inventory Rows
-    const inv = p.Inventory || [];
-    let invRows = '';
-    inv.forEach(i => {
-      invRows += `<tr>
-        <td><div class="asset-name" style="font-size:12px">${i.name}</div></td>
-        <td class="price-mono" style="font-size:12px">${fmt(i.cost)}</td>
-        <td style="text-align:right;">
-          ${i.refundable 
-            ? `<button style="background:var(--red); color:#fff; border:none; padding:4px 8px; border-radius:4px; font-size:10px; font-weight:bold; cursor:pointer;" onclick="sellInventoryItem('${team}', ${i.id})">SELL</button>` 
-            : `<span style="font-size:10px; color:var(--muted); font-weight:bold;">FINAL SALE</span>`}
-        </td>
-      </tr>`;
-    });
-
     html += `<div class="portfolio-card">
       <div class="portfolio-name">${team}</div>
       <div class="portfolio-metrics">
@@ -946,21 +813,10 @@ function renderPortfolio() {
         <div class="pm-box"><div class="pm-label">Cash</div><div class="pm-value">${fmt(cash)}</div></div>
         <div class="pm-box"><div class="pm-label">Holdings</div><div class="pm-value">${fmt(hValNow)}</div></div>
       </div>
-      
       ${holdingRows ? `<table class="asset-table" style="margin-top:8px">
         <thead><tr><th>Asset</th><th>#</th><th>Value</th><th>Day%</th></tr></thead>
         <tbody>${holdingRows}</tbody>
       </table>` : '<div style="color:var(--muted);font-size:13px;text-align:center;padding:10px">Portfolio empty</div>'}
-      
-      ${inv.length > 0 ? `
-      <div style="margin-top:16px; padding-top:12px; border-top:1px dashed var(--border);">
-        <div style="font-size:11px; font-weight:600; color:var(--gold); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Camp Inventory</div>
-        <table class="asset-table">
-          <thead><tr><th>Item</th><th>Cost</th><th style="text-align:right;">Action</th></tr></thead>
-          <tbody>${invRows}</tbody>
-        </table>
-      </div>` : ''}
-
     </div>`;
   });
 

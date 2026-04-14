@@ -7,33 +7,19 @@ import os
 import random
 from datetime import datetime, timedelta
 
-# --- 1. CONFIGURATION & STYLING ---#
+# --- 1. CONFIGURATION & STYLING ---
 st.set_page_config(page_title="Wolf Brokerage Platform", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
     .stApp { background-color: #0e1117; color: white; }
-    
-    /* Make text areas and input labels highly readable */
-    label, p, .stMarkdown { color: #ffffff !important; font-weight: 500; }
-    
-    /* Force text inside the backup boxes to be bright white */
-    textarea { 
-        color: #ffffff !important; 
-        background-color: #1a1c24 !important; 
-        font-family: monospace !important; 
-        font-size: 14px !important;
-        -webkit-text-fill-color: #ffffff !important; /* Fix for some mobile browsers */
-    }
-    
-    /* Improve button visibility */
-    .stButton > button { border: 1px solid #444; }
-    
     [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] { font-size: 1.2rem; font-weight: bold; }
+    div[data-testid="stRadio"] > div { flex-direction: row; } 
     </style>
     """, unsafe_allow_html=True)
+
 # --- 2. DATA ARCHITECTURE ---
 MARKET_FILE = "market_history.csv"
 PORTFOLIO_FILE = "portfolios.json"
@@ -159,6 +145,7 @@ df = load_market()
 ports = load_portfolios()
 current_prices = df.iloc[-1]
 prev_prices = df.iloc[-2] if len(df) > 1 else current_prices
+# Get price from 7 days ago (or first available)
 weekly_prices = df.iloc[-7] if len(df) >= 7 else df.iloc[0]
 
 current_date = current_prices['Date']
@@ -171,7 +158,9 @@ tab_market, tab_brokerage, tab_portfolio, tab_admin = st.tabs([
     "🌍 Market Overview", "💹 Trading Desk", "💼 Portfolios", "⚙️ Engine/Admin"
 ])
 
+# ==========================================
 # TAB 1: MARKET OVERVIEW
+# ==========================================
 with tab_market:
     c_head1, c_head2 = st.columns([2, 1])
     with c_head1: st.header(f"Live Market Feed - {current_date}")
@@ -205,9 +194,12 @@ with tab_market:
         st.write("**Asset List**")
         st.dataframe(change_df.style.format({"Price": "${:.2f}", "Change %": "{:+.2f}%"}).map(color_change, subset=['Change %']), use_container_width=True, height=350, hide_index=True)
 
+# ==========================================
 # TAB 2: TRADING DESK
+# ==========================================
 with tab_brokerage:
     st.header("Brokerage Trading Desk")
+    
     col_t, col_a, col_tf = st.columns([2, 2, 1])
     with col_t: selected_team = st.selectbox("Team Account:", TEAMS)
     with col_a: selected_asset = st.selectbox("Asset:", ALL_ASSETS)
@@ -242,7 +234,9 @@ with tab_brokerage:
             save_portfolios(ports); st.success("Order Filled."); st.rerun()
         else: st.error("Invalid Order: Check funds/shares.")
 
+# ==========================================
 # TAB 3: PORTFOLIOS
+# ==========================================
 with tab_portfolio:
     st.header("Active Portfolios")
     col1, col2 = st.columns(2)
@@ -253,28 +247,42 @@ with tab_portfolio:
             h_data = []
             h_val_now = 0
             h_val_weekly = 0
+            
             for a, q in ports[team]['Holdings'].items():
                 if q > 0:
-                    p_now, p_week = float(current_prices[a]), float(weekly_prices[a])
+                    # Current value
+                    p_now = float(current_prices[a])
                     v_now = q * p_now
                     h_val_now += v_now
+                    
+                    # Weekly value (what these shares were worth 7 days ago)
+                    p_week = float(weekly_prices[a])
                     h_val_weekly += (q * p_week)
+                    
                     chg = ((p_now - float(prev_prices[a]))/float(prev_prices[a]))*100 if float(prev_prices[a]) != 0 else 0
                     h_data.append({"Asset": a, "Shares": q, "Value": v_now, "Day %": chg})
             
-            nw_now = cash + h_val_now
-            nw_week = cash + h_val_weekly
-            diff = nw_now - nw_week
-            pct = (diff/nw_week)*100 if nw_week != 0 else 0
+            net_worth_now = cash + h_val_now
+            # Note: We assume cash hasn't changed for the week calculation to isolate stock performance
+            net_worth_weekly = cash + h_val_weekly
             
-            c1, c2 = st.columns(2)
-            c1.metric("Net Worth", f"${nw_now:,.2f}")
-            c2.metric("Weekly Change", f"${diff:+,.2f}", f"{pct:+.2f}%")
+            weekly_diff = net_worth_now - net_worth_weekly
+            weekly_pct = (weekly_diff / net_worth_weekly) * 100 if net_worth_weekly != 0 else 0
+            
+            # --- PORTFOLIO METRICS ---
+            m_nw, m_weekly = st.columns(2)
+            m_nw.metric("Net Worth", f"${net_worth_now:,.2f}")
+            m_weekly.metric("7-Day Performance", f"${weekly_diff:+,.2f}", f"{weekly_pct:+.2f}%")
+            
+            st.write(f"**Purchasing Power (Cash):** ${cash:,.2f}")
             
             if h_data:
                 st.dataframe(pd.DataFrame(h_data).style.format({"Value": "${:,.2f}", "Day %": "{:+.2f}%"}), use_container_width=True, hide_index=True)
+            else: st.info("Portfolio Empty.")
 
-# TAB 4: ADMIN & CLOUD BACKUP
+# ==========================================
+# TAB 4: ENGINE & ADMIN
+# ==========================================
 with tab_admin:
     st.header("Admin Controls")
     if st.button("🔔 ADVANCE CALENDAR (NEXT DAY)", type="primary", use_container_width=True):
@@ -282,32 +290,51 @@ with tab_admin:
         st.session_state.pending_shocks = []; st.rerun()
     
     st.divider()
+    st.subheader("⚡ Queue Shocks")
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1: target = st.selectbox("Shock Target", ALL_ASSETS)
+    with c2: shock_pct = st.number_input("Shock %", value=0.0)
+    if c3.button("Add to Queue"):
+        st.session_state.pending_shocks.append({'target': target, 'pct': shock_pct}); st.rerun()
+    if st.session_state.pending_shocks:
+        st.warning("Queued: " + ", ".join([f"{s['target']} ({s['pct']}%)" for s in st.session_state.pending_shocks]))
+        if st.button("Clear Shocks"): st.session_state.pending_shocks = []; st.rerun()
+
+    st.divider()
     
-    # --- DATA BACKUP SYSTEM ---
+    # ----------------------------------------------------
+    # CLOUD BACKUP & RECOVERY SECTION ADDED HERE
+    # ----------------------------------------------------
     st.subheader("💾 Cloud Recovery (Smartphone Survival)")
-    st.write("Before leaving camp or going to sleep, copy these and save them in your phone's Notes app.")
+    st.write("Before leaving camp or going to sleep, copy these texts and save them in your phone's Notes app.")
+    
     st.text_area("Market CSV Backup (Copy this)", df.to_csv(index=False), height=100)
     st.text_area("Portfolio JSON Backup (Copy this)", json.dumps(ports), height=100)
     
-    st.divider()
     st.write("Restore from your phone's notes:")
-    m_in = st.text_area("Paste Market CSV here")
-    p_in = st.text_area("Paste Portfolio JSON here")
-    if st.button("Restore from Backup"):
+    m_in = st.text_area("Paste Market CSV here to Restore")
+    p_in = st.text_area("Paste Portfolio JSON here to Restore")
+    
+    if st.button("Restore Backup"):
         if m_in and p_in:
             with open(MARKET_FILE, "w") as f: f.write(m_in)
             with open(PORTFOLIO_FILE, "w") as f: f.write(p_in)
-            st.success("Data Restored!"); st.rerun()
+            st.success("Data Restored!")
+            st.rerun()
+        else:
+            st.error("Please paste both the CSV and JSON texts to restore.")
+    # ----------------------------------------------------
 
     st.divider()
     st.subheader("🌱 Simulation")
     s_days = st.number_input("Days to Simulate", min_value=1, value=100)
     if st.button(f"Run {s_days}-Day Simulation"):
-        advance_market(days=s_days); st.rerun()
+        with st.spinner("Processing..."): advance_market(days=s_days); st.rerun()
         
     st.divider()
     pw = st.text_input("Reset Password", type="password")
-    if st.button("HARD RESET") and pw == "fullresetstocks":
-        if os.path.exists(MARKET_FILE): os.remove(MARKET_FILE)
-        if os.path.exists(PORTFOLIO_FILE): os.remove(PORTFOLIO_FILE)
-        init_data(); st.rerun()
+    if st.button("HARD RESET GAME"):
+        if pw == "fullresetstocks":
+            for f in [MARKET_FILE, PORTFOLIO_FILE]: 
+                if os.path.exists(f): os.remove(f)
+            init_data(); st.rerun()

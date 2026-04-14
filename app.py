@@ -8,15 +8,21 @@ import random
 from datetime import datetime, timedelta
 
 # --- 1. CONFIGURATION & STYLING ---
-st.set_page_config(page_title="Wolf Brokerage Platform", layout="wide", initial_sidebar_state="expanded")
-
 st.markdown("""
     <style>
+    /* Your EXACT Original Styling */
     .stApp { background-color: #0e1117; color: white; }
     [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] { font-size: 1.2rem; font-weight: bold; }
     div[data-testid="stRadio"] > div { flex-direction: row; } 
+    
+    /* ONLY fix the Backup Boxes for the phone, touching absolutely nothing else */
+    textarea { 
+        color: #ffffff !important; 
+        background-color: #1a1c24 !important; 
+        -webkit-text-fill-color: #ffffff !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 

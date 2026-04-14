@@ -8,21 +8,15 @@ import random
 from datetime import datetime, timedelta
 
 # --- 1. CONFIGURATION & STYLING ---
+st.set_page_config(page_title="Wolf Brokerage Platform", layout="wide", initial_sidebar_state="expanded")
+
 st.markdown("""
     <style>
-    /* Your EXACT Original Styling */
     .stApp { background-color: #0e1117; color: white; }
     [data-testid="stMetricValue"] { font-size: 1.8rem !important; }
     .stTabs [data-baseweb="tab-list"] { gap: 24px; border-bottom: 1px solid #333; }
     .stTabs [data-baseweb="tab"] { font-size: 1.2rem; font-weight: bold; }
     div[data-testid="stRadio"] > div { flex-direction: row; } 
-    
-    /* ONLY fix the Backup Boxes for the phone, touching absolutely nothing else */
-    textarea { 
-        color: #ffffff !important; 
-        background-color: #1a1c24 !important; 
-        -webkit-text-fill-color: #ffffff !important;
-    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -308,19 +302,16 @@ with tab_admin:
 
     st.divider()
     
-    # ----------------------------------------------------
-    # CLOUD BACKUP & RECOVERY SECTION ADDED HERE
-    # ----------------------------------------------------
-    st.subheader("💾 Cloud Recovery (Smartphone Survival)")
-    st.write("Before leaving camp or going to sleep, copy these texts and save them in your phone's Notes app.")
-    
+    # --- ADDED: CLOUD BACKUP & RECOVERY ---
+    st.subheader("💾 Cloud Recovery")
+    st.write("Before leaving camp or going to sleep, copy these and save them in your phone's Notes app.")
     st.text_area("Market CSV Backup (Copy this)", df.to_csv(index=False), height=100)
     st.text_area("Portfolio JSON Backup (Copy this)", json.dumps(ports), height=100)
-    
+
     st.write("Restore from your phone's notes:")
     m_in = st.text_area("Paste Market CSV here to Restore")
     p_in = st.text_area("Paste Portfolio JSON here to Restore")
-    
+
     if st.button("Restore Backup"):
         if m_in and p_in:
             with open(MARKET_FILE, "w") as f: f.write(m_in)
@@ -329,9 +320,10 @@ with tab_admin:
             st.rerun()
         else:
             st.error("Please paste both the CSV and JSON texts to restore.")
-    # ----------------------------------------------------
-
+    
     st.divider()
+    # --------------------------------------
+
     st.subheader("🌱 Simulation")
     s_days = st.number_input("Days to Simulate", min_value=1, value=100)
     if st.button(f"Run {s_days}-Day Simulation"):
